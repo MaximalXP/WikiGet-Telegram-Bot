@@ -788,9 +788,8 @@ class RateLimiter:
 
 rate_limiter = RateLimiter(max_requests=10, window_seconds=60)
 
-# Per-user cache for random articles so /random /short reuses the same one
-_random_cache: Dict[int, tuple] = {}  # user_id -> (article, timestamp)
-RANDOM_CACHE_TTL = 60  # seconds
+_random_cache: Dict[int, tuple] = {}  
+RANDOM_CACHE_TTL = 30  # seconds
 
 
 def format_short_message(article: WikiArticle) -> str:
