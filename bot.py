@@ -40,7 +40,6 @@ WIKI_SUMMARY_SENTENCES = 3
 WIKI_FULL_SENTENCES = 12
 CACHE_SIZE = 1000
 
-
 class ColoredFormatter(logging.Formatter):
     COLORS = {
         "DEBUG": "\033[36m",
@@ -56,7 +55,6 @@ class ColoredFormatter(logging.Formatter):
         record.levelname = f"{color}{record.levelname}{self.RESET}"
         return super().format(record)
 
-
 log_format = "%(asctime)s | %(levelname)-8s | %(name)-20s | %(message)s"
 date_format = "%Y-%m-%d %H:%M:%S"
 
@@ -65,8 +63,8 @@ console_handler.setFormatter(ColoredFormatter(log_format, date_format))
 
 file_handler = RotatingFileHandler(
     "wiki_bot.log",
-    maxBytes=5 * 1024 * 1024,  # 5 MB per file
-    backupCount=3,             # keep 3 old files
+    maxBytes=5 * 1024 * 1024,
+    backupCount=3,
     encoding="utf-8",
 )
 file_handler.setFormatter(logging.Formatter(log_format, date_format))
@@ -79,7 +77,6 @@ search_logger = logging.getLogger("WikiBot.Search")
 inline_logger = logging.getLogger("WikiBot.Inline")
 cmd_logger = logging.getLogger("WikiBot.Commands")
 
-
 @dataclass
 class WikiArticle:
     title: str
@@ -90,10 +87,8 @@ class WikiArticle:
     thumbnail: Optional[str] = None
     full_extract: Optional[str] = None
 
-
 def strip_html(text: str) -> str:
     return re.sub(r"<[^>]+>", "", text)
-
 
 DISAMBIGUATION_PATTERNS = [
     re.compile(r"\bmay refer to\b", re.IGNORECASE),
@@ -147,7 +142,6 @@ NOTICE_PREFIXES = [
     "this article needs to be cleaned up",
 ]
 
-
 def is_disambiguation(title: str, extract: str) -> bool:
     title_lower = title.lower()
     if "(disambiguation)" in title_lower:
@@ -161,7 +155,6 @@ def is_disambiguation(title: str, extract: str) -> bool:
             return True
 
     return False
-
 
 def strip_notices(text: str) -> str:
     if not text:
@@ -200,7 +193,6 @@ def strip_notices(text: str) -> str:
         return text[m.start() :]
 
     return remaining
-
 
 def clean_wiki_html(text: str, language: str = "en", max_length: int = 3500) -> str:
     if not text:
@@ -324,13 +316,13 @@ def clean_wiki_html(text: str, language: str = "en", max_length: int = 3500) -> 
         if href.startswith("/wiki/"):
             art = href[6:]
             if any(art.startswith(p) for p in _skip_link_prefixes):
-                return inner  # text only, no link
+                return inner
             return f'<a href="https://{language}.wikipedia.org{href}">{inner}</a>'
         if href.startswith("//"):
             return f'<a href="https:{href}">{inner}</a>'
         if href.startswith(("http://", "https://")):
             return f'<a href="{href}">{inner}</a>'
-        return inner  # unknown – text only
+        return inner
 
     text = re.sub(
         r"<a\s+([^>]*)>(.*?)</a>", _fix_link, text, flags=re.IGNORECASE | re.DOTALL
@@ -359,7 +351,6 @@ def clean_wiki_html(text: str, language: str = "en", max_length: int = 3500) -> 
         text = trunc + "..."
 
     return text if text else "No content available"
-
 
 def rank_search_results(
     query: str, results: List[Dict[str, Any]]
@@ -409,7 +400,6 @@ def rank_search_results(
         else ""
     )
     return ranked
-
 
 class WikipediaAPI:
     LANG_PATTERNS = {
@@ -756,15 +746,12 @@ class WikipediaAPI:
         )
         return combined
 
-
 wiki_api = WikipediaAPI()
-
 
 class RateLimiter:
     def __init__(self, max_requests: int = 10, window_seconds: int = 60):
         self.max_requests = max_requests
         self.window = window_seconds
-        # user_id -> list of timestamps (seconds since epoch)
         self._hits: Dict[int, List[float]] = {}
 
     def is_allowed(self, user_id: int) -> bool:
@@ -798,34 +785,34 @@ class RateLimiter:
         for uid in stale:
             del self._hits[uid]
 
-
 rate_limiter = RateLimiter(max_requests=10, window_seconds=60)
-
 
 def format_short_message(article: WikiArticle) -> str:
     title_escaped = html.escape(article.title)
     content = clean_wiki_html(article.summary, article.language, max_length=1000)
 
-    message = f"""📚 <b>{title_escaped}</b>
+    message = f"""📚 <a href="{article.url}"><b>{title_escaped}</b></a>
 🌐 Language: {article.language.upper()}
 
-{content}"""
+{content}
+
+🔗 <a href="{article.url}">Read on Wikipedia</a>"""
 
     return message
-
 
 def format_full_message(article: WikiArticle) -> str:
     title_escaped = html.escape(article.title)
     raw = article.full_extract or article.summary or "No content available"
     content = clean_wiki_html(raw, article.language, max_length=3500)
 
-    message = f"""📖 <b>{title_escaped}</b>
+    message = f"""📖 <a href="{article.url}"><b>{title_escaped}</b></a>
 🌐 Language: {article.language.upper()}
 
-{content}"""
+{content}
+
+🔗 <a href="{article.url}">Read on Wikipedia</a>"""
 
     return message
-
 
 def format_search_result(result: Dict[str, Any], is_short: bool = False) -> str:
     title = html.escape(result.get("title", "Unknown"))
@@ -839,7 +826,6 @@ def format_search_result(result: Dict[str, Any], is_short: bool = False) -> str:
 🌐 {lang} | {mode}
 
 {snippet}..."""
-
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -877,11 +863,9 @@ The bot automatically detects the language from your query!
 
     await update.message.reply_text(welcome_message, parse_mode=ParseMode.HTML)
 
-
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cmd_logger.info(f"Help command from user {update.effective_user.id}")
     await start_command(update, context)
-
 
 async def _find_good_article(
     search_results: List[Dict[str, Any]],
@@ -911,7 +895,6 @@ async def _find_good_article(
         return article
 
     return None
-
 
 async def wiki_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -943,7 +926,7 @@ async def wiki_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not results:
         await update.message.reply_text(
-            f"❌ No articles found for: <b>{html.escape(query)}</b>",
+            f"❌ No articles found for: <b>{html.escape(query[:50])}{'...' if len(query) > 50 else ''}</b>",
             parse_mode=ParseMode.HTML,
         )
         return
@@ -966,7 +949,6 @@ async def wiki_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Could not retrieve article: <b>{html.escape(query)}</b>",
             parse_mode=ParseMode.HTML,
         )
-
 
 async def short_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -995,7 +977,7 @@ async def short_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not results:
         await update.message.reply_text(
-            f"❌ No articles found for: <b>{html.escape(query)}</b>",
+            f"❌ No articles found for: <b>{html.escape(query[:50])}{'...' if len(query) > 50 else ''}</b>",
             parse_mode=ParseMode.HTML,
         )
         return
@@ -1017,7 +999,6 @@ async def short_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Could not retrieve article: <b>{html.escape(query)}</b>",
             parse_mode=ParseMode.HTML,
         )
-
 
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -1046,7 +1027,7 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not results:
         await update.message.reply_text(
-            f"❌ No results found for: <b>{html.escape(query)}</b>",
+            f"❌ No results found for: <b>{html.escape(query[:50])}{'...' if len(query) > 50 else ''}</b>",
             parse_mode=ParseMode.HTML,
         )
         return
@@ -1069,7 +1050,6 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message += "\n💡 Just send the article name to get full article"
 
     await update.message.reply_text(message, parse_mode=ParseMode.HTML)
-
 
 async def random_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -1109,6 +1089,25 @@ async def random_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML,
         )
 
+def _parse_random_query(raw: str):
+    """Parse /random query with flexible syntax.
+    Returns (lang, is_short). Handles:
+      /random
+      /random hy
+      /random /short
+      /random hy /short
+      /random /short hy
+      /short hy /random
+    """
+    parts = raw.lower().split()
+    lang = "en"
+    is_short = False
+    for part in parts:
+        if part == "/short":
+            is_short = True
+        elif part.isalpha() and len(part) <= 3:
+            lang = part
+    return lang, is_short
 
 async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.inline_query.query.strip()
@@ -1130,6 +1129,7 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
                     message_text="🌐 <b>Wikipedia Bot Help</b>\n\n"
                     "• Type article name for full version\n"
                     "• Type /short + name for summary\n"
+                    "• Type /random for a random article\n"
                     "• Works in any language!",
                     parse_mode=ParseMode.HTML,
                 ),
@@ -1138,10 +1138,65 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.inline_query.answer(results, cache_time=300)
         return
 
-    is_short = False
-    if query.lower().startswith("/short"):
-        is_short = True
-        query = re.sub(r"^/short\s*", "", query, flags=re.IGNORECASE).strip()
+    has_random = bool(re.search(r"/random\b", query, re.IGNORECASE))
+    has_short = bool(re.search(r"/short\b", query, re.IGNORECASE))
+
+    if has_random:
+        lang, rs = _parse_random_query(query)
+        is_short = has_short or rs
+
+        if lang == "en" and not has_short and not re.search(r"/random\s+\w", query, re.IGNORECASE):
+            help_result = InlineQueryResultArticle(
+                id="random_help",
+                title="🎲 Random Wikipedia Article",
+                description="Click here to get a random article. Add lang code (e.g. /random hy) or /short.",
+                input_message_content=InputTextMessageContent(
+                    message_text="Fetching random article...",
+                    parse_mode=ParseMode.HTML,
+                ),
+            )
+            await update.inline_query.answer([help_result], cache_time=300)
+            return
+
+        article = await wiki_api.get_random(lang)
+        if article is None:
+            await update.inline_query.answer([], cache_time=10)
+            return
+        raw = article.full_extract or article.summary or ""
+        if is_disambiguation(article.title, raw):
+            await update.inline_query.answer([], cache_time=10)
+            return
+
+        if is_short:
+            message_text = format_short_message(article)
+            desc_prefix = "🎲 Short | "
+        else:
+            message_text = format_full_message(article)
+            desc_prefix = "🎲 Full | "
+
+        summary_preview = strip_html(article.summary or "")[:100]
+        description = f"{desc_prefix}{article.language.upper()} | {summary_preview}..."
+
+        result_id = hashlib.md5(f"random_{article.title}_{article.language}_{is_short}".encode()).hexdigest()
+        inline_result = InlineQueryResultArticle(
+            id=result_id,
+            title=f"🎲 {article.title}",
+            description=description,
+            input_message_content=InputTextMessageContent(
+                message_text=message_text,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=False,
+            ),
+            thumbnail_url=article.thumbnail or "https://upload.wikimedia.org/wikipedia/en/thumb/8/80/Wikipedia-logo-v2.svg/103px-Wikipedia-logo-v2.svg.png",
+            url=article.url,
+        )
+        await update.inline_query.answer([inline_result], cache_time=300)
+        return
+
+    if has_short:
+        query = re.sub(r"/short\s*", "", query, flags=re.IGNORECASE).strip()
+
+    is_short = has_short
 
     if not query:
         await update.inline_query.answer([], cache_time=10)
@@ -1153,10 +1208,10 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         results = [
             InlineQueryResultArticle(
                 id="not_found",
-                title=f"❌ No results for: {query}",
+                title=f"❌ No results for: {query[:50]}{'...' if len(query) > 50 else ''}",
                 description="Try a different search term",
                 input_message_content=InputTextMessageContent(
-                    message_text=f"❌ No Wikipedia articles found for: <b>{html.escape(query)}</b>",
+                    message_text=f"❌ No Wikipedia articles found for: <b>{html.escape(query[:50])}{'...' if len(query) > 50 else ''}</b>",
                     parse_mode=ParseMode.HTML,
                 ),
             )
@@ -1211,9 +1266,6 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
                 message_text=message_text,
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=False,
-                reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton("🔗 Open on Wikipedia", url=article.url)]]
-                ),
             ),
             thumbnail_url=article.thumbnail
             or "https://upload.wikimedia.org/wikipedia/en/thumb/8/80/Wikipedia-logo-v2.svg/103px-Wikipedia-logo-v2.svg.png",
@@ -1232,7 +1284,6 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         is_personal=False,
     )
 
-
 async def direct_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
@@ -1248,7 +1299,6 @@ async def direct_message_handler(update: Update, context: ContextTypes.DEFAULT_T
 
     context.args = query.split()
     await wiki_command(update, context)
-
 
 async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
@@ -1275,7 +1325,6 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     context.args = query.split()
     await wiki_command(update, context)
 
-
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Error: {context.error}", exc_info=context.error)
 
@@ -1287,18 +1336,15 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
 
-
 async def post_init(application: Application):
     logger.info("Bot post-init: ensuring API session")
     await wiki_api.ensure_session()
     bot_info = await application.bot.get_me()
     logger.info(f"Bot started: @{bot_info.username} (ID: {bot_info.id})")
 
-
 async def post_shutdown(application: Application):
     logger.info("Bot shutdown: closing API session")
     await wiki_api.close()
-
 
 def main():
     logger.info("=" * 60)
@@ -1347,7 +1393,6 @@ def main():
         allowed_updates=Update.ALL_TYPES,
         drop_pending_updates=True,
     )
-
 
 if __name__ == "__main__":
     main()
