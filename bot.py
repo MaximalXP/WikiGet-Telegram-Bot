@@ -791,12 +791,10 @@ def format_short_message(article: WikiArticle) -> str:
     title_escaped = html.escape(article.title)
     content = clean_wiki_html(article.summary, article.language, max_length=1000)
 
-    message = f"""📚 <a href="{article.url}"><b>{title_escaped}</b></a>
+    message = f"""📚 <b>{title_escaped}</b>
 🌐 Language: {article.language.upper()}
 
-{content}
-
-🔗 <a href="{article.url}">Read on Wikipedia</a>"""
+{content}"""
 
     return message
 
@@ -805,12 +803,10 @@ def format_full_message(article: WikiArticle) -> str:
     raw = article.full_extract or article.summary or "No content available"
     content = clean_wiki_html(raw, article.language, max_length=3500)
 
-    message = f"""📖 <a href="{article.url}"><b>{title_escaped}</b></a>
+    message = f"""📖 <b>{title_escaped}</b>
 🌐 Language: {article.language.upper()}
 
-{content}
-
-🔗 <a href="{article.url}">Read on Wikipedia</a>"""
+{content}"""
 
     return message
 
@@ -1145,19 +1141,6 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         lang, rs = _parse_random_query(query)
         is_short = has_short or rs
 
-        if lang == "en" and not has_short and not re.search(r"/random\s+\w", query, re.IGNORECASE):
-            help_result = InlineQueryResultArticle(
-                id="random_help",
-                title="🎲 Random Wikipedia Article",
-                description="Click here to get a random article. Add lang code (e.g. /random hy) or /short.",
-                input_message_content=InputTextMessageContent(
-                    message_text="Fetching random article...",
-                    parse_mode=ParseMode.HTML,
-                ),
-            )
-            await update.inline_query.answer([help_result], cache_time=300)
-            return
-
         article = await wiki_api.get_random(lang)
         if article is None:
             await update.inline_query.answer([], cache_time=10)
@@ -1173,6 +1156,8 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         else:
             message_text = format_full_message(article)
             desc_prefix = "🎲 Full | "
+
+        message_text += f"\n\n🔗 <a href=\"{article.url}\">Read on Wikipedia</a>"
 
         summary_preview = strip_html(article.summary or "")[:100]
         description = f"{desc_prefix}{article.language.upper()} | {summary_preview}..."
@@ -1251,6 +1236,8 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             message_text = format_full_message(article)
             desc_prefix = "📖 Full | "
 
+        message_text += f"\n\n🔗 <a href=\"{article.url}\">Read on Wikipedia</a>"
+
         summary_preview = strip_html(article.summary or "")[:100]
         description = f"{desc_prefix}{article.language.upper()} | {summary_preview}..."
 
@@ -1293,6 +1280,9 @@ async def direct_message_handler(update: Update, context: ContextTypes.DEFAULT_T
         return
 
     query = update.message.text.strip()
+
+    if query.startswith("@"):
+        return
     user = update.effective_user
 
     cmd_logger.info(f"Direct message from {user.id}: '{query}'")
