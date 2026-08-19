@@ -1069,7 +1069,7 @@ async def random_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     article = await wiki_api.get_random(language)
 
     if article:
-        message = format_full_message(article)
+        message = f"🎲 <b>Random article</b>\n\n" + format_full_message(article)
         keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton("🔗 Open in Wikipedia", url=article.url)]]
         )
@@ -1157,6 +1157,7 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             message_text = format_full_message(article)
             desc_prefix = "🎲 Full | "
 
+        message_text = f"🎲 <b>Random article</b>\n\n" + message_text
         message_text += f"\n\n🔗 <a href=\"{article.url}\">Read on Wikipedia</a>"
 
         summary_preview = strip_html(article.summary or "")[:100]
