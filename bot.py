@@ -5,6 +5,7 @@ import asyncio
 import hashlib
 import html
 import re
+import time
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
@@ -787,6 +788,11 @@ class RateLimiter:
 
 rate_limiter = RateLimiter(max_requests=10, window_seconds=60)
 
+# Per-user cache for random articles so /random /short reuses the same one
+_random_cache: Dict[int, tuple] = {}  # user_id -> (article, timestamp)
+RANDOM_CACHE_TTL = 60  # seconds
+
+
 def format_short_message(article: WikiArticle) -> str:
     title_escaped = html.escape(article.title)
     content = clean_wiki_html(article.summary, article.language, max_length=1000)
@@ -1141,7 +1147,20 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         lang, rs = _parse_random_query(query)
         is_short = has_short or rs
 
-        article = await wiki_api.get_random(lang)
+        # Check per-user random cache
+        now = time.time()
+        cached = _random_cache.get(user.id)
+        article = None
+        if cached:
+            cached_article, cached_time = cached
+            if now - cached_time < RANDOM_CACHE_TTL and cached_article.language == lang:
+                article = cached_article
+
+        if article is None:
+            article = await wiki_api.get_random(lang)
+            if article is not None:
+                _random_cache[user.id] = (article, now)
+
         if article is None:
             await update.inline_query.answer([], cache_time=10)
             return
