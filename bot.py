@@ -1175,7 +1175,7 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             thumbnail_url=article.thumbnail or "https://upload.wikimedia.org/wikipedia/en/thumb/8/80/Wikipedia-logo-v2.svg/103px-Wikipedia-logo-v2.svg.png",
             url=article.url,
         )
-        await update.inline_query.answer([inline_result], cache_time=300)
+        await update.inline_query.answer([inline_result], cache_time=0)
         return
 
     if has_short:
