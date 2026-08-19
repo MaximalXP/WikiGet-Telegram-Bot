@@ -116,7 +116,9 @@ The bot will start polling for updates immediately. You'll see colored logs in t
 | `/short <article>` | Get a short summary | `/short Albert Einstein` |
 | `/search <query>` | Search Wikipedia articles | `/search quantum physics` |
 | `/random` | Get a random interesting article | `/random` |
-| `/random hy` | Random article from Armenian Wikipedia | `/random ja` |
+| `/random {lang_code}` | Random from Armenian Wikipedia | `/random hy` |
+| `/random /short` | Random short summary | `/random /short` |
+| `/random {lang_code} /short` | Random Armenian short summary | `/random hy /short` |
 | `/start` | Show welcome message | `/start` |
 | `/help` | Show help | `/help` |
 
@@ -126,6 +128,9 @@ Type `@yourbot` followed by a search query in **any** chat:
 
 - `@yourbot Python` — Full article
 - `@yourbot /short Einstein` — Short summary
+- `@yourbot /random` — Random article
+- `@yourbot /random hy` — Random from Armenian Wikipedia
+- `@yourbot /random /short` — Random short summary
 - `@yourbot 東京` — Works in any language
 
 ### Groups
